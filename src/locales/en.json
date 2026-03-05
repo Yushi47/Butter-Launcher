@@ -862,6 +862,14 @@
       "cleared": "Cleared {{count}} incomplete install folder(s).",
       "noneFound": "No incomplete install folders were found."
     },
+    "background": {
+      "label": "Custom Background",
+      "pickTitle": "Select Background File",
+      "pickImage": "Image",
+      "pickVideo": "Video / Live",
+      "clear": "Remove background",
+      "description": "Set a custom background image or live video wallpaper. Supported: PNG, JPG, GIF, WebP, MP4, WebM."
+    },
     "credits": {
       "label": "Credits",
       "onlineFix": "Online Fix",

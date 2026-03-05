@@ -10,6 +10,7 @@ import {
   dialog,
   session,
   net,
+  protocol,
 } from "electron";
 
 // Main process: where we spawn processes and regrets.
@@ -88,6 +89,8 @@ import {
   readOrInitLauncherSettings,
   markFirstRunStartupSoundPlayed,
   setPlayStartupSound,
+  getBackground,
+  setBackground,
 } from "./utils/launcherSettings";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -935,6 +938,20 @@ const applySteamDeckModeAcrossInstalled = (
   };
 };
 
+// Register custom protocol scheme before app is ready (Electron requirement).
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "butter-bg",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true,
+    },
+  },
+]);
+
 app.on("ready", () => {
   app.setAppUserModelId("com.butter.launcher");
   // Launcher updates are handled via version.json (renderer UI prompt).
@@ -1448,6 +1465,51 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Register custom protocol to serve local background files securely.
+  const { protocol: proto } = session.defaultSession;
+  proto.handle("butter-bg", (req) => {
+    try {
+      // URL format: butter-bg:///C:/path/to/file.mp4
+      const url = new URL(req.url);
+      let filePath = decodeURIComponent(url.pathname);
+      // On Windows, pathname starts with /C:/... — strip the leading slash
+      if (process.platform === "win32" && /^\/[a-zA-Z]:/.test(filePath)) {
+        filePath = filePath.slice(1);
+      }
+      filePath = path.normalize(filePath);
+
+      // Only allow image/video MIME types
+      const ext = path.extname(filePath).toLowerCase();
+      const allowed: Record<string, string> = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".ogg": "video/ogg",
+        ".mov": "video/quicktime",
+      };
+      const mime = allowed[ext];
+      if (!mime) {
+        return new Response("Forbidden file type", { status: 403 });
+      }
+
+      if (!fs.existsSync(filePath)) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      const data = fs.readFileSync(filePath);
+      return new Response(data, {
+        headers: { "Content-Type": mime },
+      });
+    } catch {
+      return new Response("Error", { status: 500 });
+    }
+  });
+
   installWikiWebviewGuards();
   createWindow();
 
@@ -1598,6 +1660,29 @@ ipcMain.handle("launcher-settings:startup-sound:set", async (_, enabled: boolean
 ipcMain.handle("launcher-settings:startup-sound:first-run-played", async () => {
   try {
     const res = markFirstRunStartupSoundPlayed();
+    return { ok: res.ok, settingsPath: res.settingsPath, error: res.ok ? null : "Failed to write settings" };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return { ok: false, settingsPath: "", error: message };
+  }
+});
+
+ipcMain.handle("launcher-settings:background:get", async () => {
+  try {
+    const res = getBackground();
+    return { ok: res.ok, backgroundType: res.backgroundType, backgroundPath: res.backgroundPath, error: null as string | null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return { ok: false, backgroundType: "none", backgroundPath: "", error: message };
+  }
+});
+
+ipcMain.handle("launcher-settings:background:set", async (_, backgroundType: string, backgroundPath: string) => {
+  try {
+    const validTypes = ["none", "image", "video"] as const;
+    const bgType = validTypes.includes(backgroundType as any) ? (backgroundType as typeof validTypes[number]) : "none";
+    const bgPath = typeof backgroundPath === "string" ? backgroundPath : "";
+    const res = setBackground(bgType, bgPath);
     return { ok: res.ok, settingsPath: res.settingsPath, error: res.ok ? null : "Failed to write settings" };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

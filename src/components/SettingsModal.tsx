@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { IconFolderOpen } from "@tabler/icons-react";
+import { IconFolderOpen, IconPhoto, IconVideo, IconX } from "@tabler/icons-react";
 import { useGameContext } from "../hooks/gameContext";
 import cn from "../utils/cn";
 import ConfirmModal from "./ConfirmModal";
 import { useTranslation } from "react-i18next";
 import { setStoredLanguage } from "../i18n";
+
+type BackgroundType = "none" | "image" | "video";
 
 const LANGUAGES = {
   en: { name: "English", flag: "🇺🇸" },
@@ -68,6 +70,10 @@ const SettingsModal: React.FC<{
   const [creditsOpen, setCreditsOpen] = useState(false);
 
   const [clearingCache, setClearingCache] = useState(false);
+
+  const [bgType, setBgType] = useState<BackgroundType>("none");
+  const [bgPath, setBgPath] = useState("");
+  const [bgSaving, setBgSaving] = useState(false);
 
   const [closing, setClosing] = useState(false);
 
@@ -157,6 +163,18 @@ const SettingsModal: React.FC<{
           setAccountType("custom");
         } else {
           setAccountType(null);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    (async () => {
+      try {
+        const res = await window.config.backgroundGet();
+        if (res.ok) {
+          setBgType(res.backgroundType || "none");
+          setBgPath(res.backgroundPath || "");
         }
       } catch {
         // ignore
@@ -342,6 +360,49 @@ const SettingsModal: React.FC<{
       alert("Error #1000");
     } finally {
       setClearingCache(false);
+    }
+  };
+
+  const handlePickBackground = async (type: "image" | "video") => {
+    if (bgSaving) return;
+    const extensions =
+      type === "image"
+        ? ["png", "jpg", "jpeg", "gif", "webp", "bmp"]
+        : ["mp4", "webm", "ogg", "mov"];
+    try {
+      const res = await window.config.pickFile({
+        title: t("settings.background.pickTitle"),
+        extensions,
+      });
+      if (!res.ok || !res.path) return;
+      setBgSaving(true);
+      const saveRes = await window.config.backgroundSet(type, res.path);
+      if (!saveRes.ok) throw new Error(saveRes.error || "Failed");
+      setBgType(type);
+      setBgPath(res.path);
+      window.dispatchEvent(new Event("background:changed"));
+    } catch (e) {
+      console.error("Failed to set background", e);
+      alert("Error #1000");
+    } finally {
+      setBgSaving(false);
+    }
+  };
+
+  const handleClearBackground = async () => {
+    if (bgSaving) return;
+    setBgSaving(true);
+    try {
+      const res = await window.config.backgroundSet("none", "");
+      if (!res.ok) throw new Error(res.error || "Failed");
+      setBgType("none");
+      setBgPath("");
+      window.dispatchEvent(new Event("background:changed"));
+    } catch (e) {
+      console.error("Failed to clear background", e);
+      alert("Error #1000");
+    } finally {
+      setBgSaving(false);
     }
   };
 
@@ -657,6 +718,58 @@ const SettingsModal: React.FC<{
               </button>
               <div className="text-[11px] text-gray-400">
                 {t("settings.cache.description")}
+              </div>
+            </div>
+
+            {/* CUSTOM BACKGROUND */}
+            <div className="col-span-2 space-y-2">
+              <label className="text-xs uppercase tracking-widest text-gray-400">
+                {t("settings.background.label")}
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 bg-[#1f2538] hover:bg-[#262d44] border border-[#2a3146] rounded-lg px-4 py-2 text-white transition disabled:opacity-60",
+                    bgType === "image" && "border-blue-500/60 bg-blue-600/15",
+                  )}
+                  disabled={bgSaving}
+                  onClick={() => void handlePickBackground("image")}
+                >
+                  <IconPhoto size={16} />
+                  <span className="text-sm">{t("settings.background.pickImage")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 bg-[#1f2538] hover:bg-[#262d44] border border-[#2a3146] rounded-lg px-4 py-2 text-white transition disabled:opacity-60",
+                    bgType === "video" && "border-blue-500/60 bg-blue-600/15",
+                  )}
+                  disabled={bgSaving}
+                  onClick={() => void handlePickBackground("video")}
+                >
+                  <IconVideo size={16} />
+                  <span className="text-sm">{t("settings.background.pickVideo")}</span>
+                </button>
+                {bgType !== "none" && (
+                  <button
+                    type="button"
+                    className="flex items-center justify-center gap-1 bg-[#1f2538] hover:bg-red-500/15 border border-[#2a3146] hover:border-red-500/30 rounded-lg px-3 py-2 text-red-400 transition disabled:opacity-60"
+                    disabled={bgSaving}
+                    onClick={() => void handleClearBackground()}
+                    title={t("settings.background.clear")}
+                  >
+                    <IconX size={16} />
+                  </button>
+                )}
+              </div>
+              {bgType !== "none" && bgPath && (
+                <div className="text-[10px] text-gray-400 font-mono break-all">
+                  {bgType === "image" ? "🖼️" : "🎬"} {bgPath}
+                </div>
+              )}
+              <div className="text-[11px] text-gray-400">
+                {t("settings.background.description")}
               </div>
             </div>
 

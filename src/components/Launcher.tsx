@@ -163,7 +163,7 @@ const NEWS_URL =
   (import.meta as any).env?.VITE_NEWS_URL ||
   "https://updates.butterlauncher.tech/news.json";
 
-const Launcher: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
+const Launcher: React.FC<{ onLogout?: () => void; hasCustomBg?: boolean }> = ({ onLogout, hasCustomBg }) => {
   const { t } = useTranslation();
   const {
     gameDir,
@@ -1026,12 +1026,16 @@ const Launcher: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   return (
     <div
       className="w-full h-full min-h-screen flex flex-col justify-between relative"
-      style={{
-        backgroundImage: `url(${butterBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
+      style={
+        hasCustomBg
+          ? {}
+          : {
+              backgroundImage: `url(${butterBg})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }
+      }
     >
       <DragBar
         left={

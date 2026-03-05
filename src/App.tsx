@@ -353,6 +353,28 @@ export default function App() {
 
   const appRootRef = useRef<HTMLDivElement | null>(null);
 
+  const [bgType, setBgType] = useState<"none" | "image" | "video">("none");
+  const [bgPath, setBgPath] = useState("");
+
+  useEffect(() => {
+    const loadBg = async () => {
+      try {
+        const res = await window.config.backgroundGet();
+        if (res?.ok) {
+          setBgType(res.backgroundType || "none");
+          setBgPath(res.backgroundPath || "");
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void loadBg();
+
+    const onChanged = () => void loadBg();
+    window.addEventListener("background:changed", onChanged);
+    return () => window.removeEventListener("background:changed", onChanged);
+  }, []);
+
   const [magdOpen, setMagdOpen] = useState(false);
   const [magdRunId, setMagdRunId] = useState(0);
   const magdAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -2146,6 +2168,45 @@ export default function App() {
         position: "relative",
       }}
     >
+      {/* Custom Background Layer */}
+      {bgType === "image" && bgPath && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            backgroundImage: `url("butter-bg:///${bgPath.replace(/\\/g, "/")}")`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(11, 15, 22, 0.55)" }} />
+        </div>
+      )}
+      {bgType === "video" && bgPath && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
+          <video
+            key={bgPath}
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              minWidth: "100%",
+              minHeight: "100%",
+              transform: "translate(-50%, -50%)",
+              objectFit: "cover",
+            }}
+          >
+            <source src={`butter-bg:///${bgPath.replace(/\\/g, "/")}`} />
+          </video>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(11, 15, 22, 0.45)" }} />
+        </div>
+      )}
       <style>{`
         @keyframes simonSlideUp {
           0% { transform: translate(-50%, 100%); }
@@ -3513,6 +3574,7 @@ export default function App() {
         }
         style={{
           position: "relative",
+          zIndex: 1,
           opacity:
             zyleOpen ||
             (ikyOpen && (ikyPhase === "hex" || ikyPhase === "freeze"))
@@ -3542,6 +3604,7 @@ export default function App() {
           (ready ? (
             username && hasValidAccountType ? (
               <Launcher
+                hasCustomBg={bgType !== "none"}
                 onLogout={() => {
                   setUsername(null);
                   try {
@@ -3563,7 +3626,7 @@ export default function App() {
                 }}
               />
             ) : (
-              <Login onLogin={(username) => setUsername(username)} />
+              <Login hasCustomBg={bgType !== "none"} onLogin={(username) => setUsername(username)} />
             )
           ) : null)}
       </div>

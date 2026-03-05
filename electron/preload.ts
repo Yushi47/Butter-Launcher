@@ -129,6 +129,10 @@ contextBridge.exposeInMainWorld("config", {
   startupSoundMarkFirstRunPlayed: () =>
     ipcRenderer.invoke("launcher-settings:startup-sound:first-run-played"),
 
+  backgroundGet: () => ipcRenderer.invoke("launcher-settings:background:get"),
+  backgroundSet: (backgroundType: string, backgroundPath: string) =>
+    ipcRenderer.invoke("launcher-settings:background:set", backgroundType, backgroundPath),
+
   offlineTokenRefresh: (payload: {
     username: string;
     accountType?: string | null;
