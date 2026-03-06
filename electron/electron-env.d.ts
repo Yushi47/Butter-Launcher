@@ -96,6 +96,9 @@ interface Window {
     startupSoundSet: (enabled: boolean) => Promise<{ ok: boolean; settingsPath: string; error: string | null }>;
     startupSoundMarkFirstRunPlayed: () => Promise<{ ok: boolean; settingsPath: string; error: string | null }>;
 
+    backgroundGet: () => Promise<{ ok: boolean; backgroundType: string; backgroundPath: string; error: string | null }>;
+    backgroundSet: (backgroundType: string, backgroundPath: string) => Promise<{ ok: boolean; settingsPath: string; error: string | null }>;
+
     offlineTokenRefresh: (payload: {
       username: string;
       accountType?: string | null;

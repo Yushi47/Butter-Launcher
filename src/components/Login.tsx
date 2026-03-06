@@ -5,8 +5,9 @@ import DragBar from "./DragBar";
 import { useTranslation } from "react-i18next";
 import { customAlternativeLoginProvider } from "../utils/dynamicModules/customAlternativeLoginProvider";
 
-const Login: React.FC<{ onLogin: (username: string) => void }> = ({
+const Login: React.FC<{ onLogin: (username: string) => void; hasCustomBg?: boolean }> = ({
   onLogin,
+  hasCustomBg,
 }) => {
   const { t } = useTranslation();
 
@@ -288,12 +289,12 @@ const Login: React.FC<{ onLogin: (username: string) => void }> = ({
   };
 
   return (
-    <div className="w-screen h-screen flex bg-black overflow-hidden">
+    <div className={`w-screen h-screen flex ${hasCustomBg ? "bg-transparent" : "bg-black"} overflow-hidden`}>
       <div className="fixed top-0 left-0 w-full z-50">
         <DragBar />
       </div>
 
-      <div className="w-[380px] h-full bg-[#0f131a] flex flex-col justify-center px-10 relative">
+      <div className={`w-[380px] h-full ${hasCustomBg ? "bg-[#0f131a]/80 backdrop-blur-md" : "bg-[#0f131a]"} flex flex-col justify-center px-10 relative`}>
         <img
           src={butterLogo}
           alt="Logo"
@@ -443,7 +444,7 @@ const Login: React.FC<{ onLogin: (username: string) => void }> = ({
 
       <div
         className="flex-1 h-full bg-cover bg-center"
-        style={{ backgroundImage: `url(${butterLoginBg})` }}
+        style={hasCustomBg ? {} : { backgroundImage: `url(${butterLoginBg})` }}
       />
     </div>
   );
